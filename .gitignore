@@ -1,0 +1,50 @@
+# Environment
+.env
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Database
+*.db
+*.db-wal
+*.db-shm
+data/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# Docker
+.dockerignore
+
+# Copilot CLI internals
+.agents/
+skills-lock.json
+.github/copilot-instructions.md
+
+# Planning / university docs (keep locally, not in repo)
+plan.md
+sd.txt
+main.tex.txt
+Project.docx.md
+"Project.docx.md:Zone.Identifier"
