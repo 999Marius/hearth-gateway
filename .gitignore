@@ -36,3 +36,15 @@ Thumbs.db
 
 # Docker
 .dockerignore
+
+# Copilot CLI internals
+.agents/
+skills-lock.json
+.github/copilot-instructions.md
+
+# Planning / university docs (keep locally, not in repo)
+plan.md
+sd.txt
+main.tex.txt
+Project.docx.md
+"Project.docx.md:Zone.Identifier"
