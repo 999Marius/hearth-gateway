@@ -1,0 +1,2 @@
+"""Hearth backend application package."""
+
