@@ -15,18 +15,22 @@ settings = get_settings()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
+def _normalize_bcrypt_secret(password: str) -> str:
+    """Return a bcrypt-compatible password (max 72 bytes in UTF-8)."""
+    password_bytes = password.encode("utf-8")
+    if len(password_bytes) <= 72:
+        return password
+    return password_bytes[:72].decode("utf-8", errors="ignore")
+
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plaintext password against a bcrypt hash."""
-    return pwd_context.verify(plain_password, hashed_password)
+    return pwd_context.verify(_normalize_bcrypt_secret(plain_password), hashed_password)
 
 
 def get_password_hash(password: str) -> str:
     """Hash a password using bcrypt."""
-    encoded = password.encode("utf-8")
-    if len(encoded) > 72:
-        # Bcrypt ignores bytes beyond 72; truncate to avoid runtime errors.
-        password = encoded[:72].decode("utf-8", errors="ignore")
-    return pwd_context.hash(password)
+    return pwd_context.hash(_normalize_bcrypt_secret(password))
 
 
 def _create_token(

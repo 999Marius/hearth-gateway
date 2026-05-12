@@ -82,7 +82,6 @@ Base URL: `http://localhost:8000`
 ## Postman evidence (required screenshots)
 
 > Replace the placeholders below with your actual captures before submission.
-
 1. Login success (`200`)  
 ![01 Login Success](documentation/postman/01-login-success.png)
 
@@ -122,4 +121,3 @@ Base URL: `http://localhost:8000`
 
 8. Refresh token (`200`)  
 ![08 Refresh Token](documentation/postman/08-refresh-token.png)
-
