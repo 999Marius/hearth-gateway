@@ -1,45 +1,144 @@
-const metrics = [
-  { label: 'Active devices', value: '128', delta: '+12%' },
-  { label: 'Critical alerts', value: '3', delta: '−2' },
-  { label: 'VPN peers', value: '46', delta: '+4' },
-  { label: 'Admin uptime', value: '99.98%', delta: '30d' },
-]
+import { useEffect, useMemo, useState } from 'react'
+import { listAlerts } from '../api/alerts'
+import { listDevices } from '../api/devices'
+import { listUsers } from '../api/users'
+import { listVPNPeers } from '../api/vpnPeers'
+import type { Alert, Device, User, VPNPeer } from '../types/resources'
 
-const activity = [
-  {
-    title: 'Alert acknowledged',
-    meta: 'Hearth Edge · Critical',
-    time: '2 min ago',
-    tone: 'critical',
-  },
-  {
-    title: 'New device enrolled',
-    meta: 'MAC 8C:2D:AA:19:7F:61',
-    time: '12 min ago',
-    tone: 'info',
-  },
-  {
-    title: 'VPN peer rotated',
-    meta: 'Gateway East · Key refresh',
-    time: '41 min ago',
-    tone: 'warning',
-  },
-  {
-    title: 'User role updated',
-    meta: 'm.kensley → admin',
-    time: '1 hr ago',
-    tone: 'neutral',
-  },
-]
+type ActivityItem = {
+  title: string
+  meta: string
+  time: string
+  tone: 'critical' | 'warning' | 'info' | 'neutral'
+}
 
-const devices = [
-  { name: 'Hearth Edge', status: 'Healthy', ip: '10.20.18.21' },
-  { name: 'Transit Relay', status: 'Monitoring', ip: '10.20.18.77' },
-  { name: 'Northbridge', status: 'Offline', ip: '10.20.18.12' },
-]
+const toRelativeTime = (value: string | null) => {
+  if (!value) {
+    return '—'
+  }
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return '—'
+  }
+  const minutes = Math.round((Date.now() - date.getTime()) / 60000)
+  if (minutes < 1) return 'just now'
+  if (minutes < 60) return `${minutes} min ago`
+  const hours = Math.round(minutes / 60)
+  if (hours < 24) return `${hours} hr ago`
+  const days = Math.round(hours / 24)
+  return `${days} d ago`
+}
 
-export const Dashboard = () => (
-  <>
+const toDeviceStatus = (status: string) => {
+  const normalized = status.toLowerCase()
+  if (normalized === 'online') return 'Healthy'
+  if (normalized === 'maintenance') return 'Monitoring'
+  if (normalized === 'offline') return 'Offline'
+  return status
+}
+
+export const Dashboard = () => {
+  const [alerts, setAlerts] = useState<Alert[]>([])
+  const [devices, setDevices] = useState<Device[]>([])
+  const [users, setUsers] = useState<User[]>([])
+  const [peers, setPeers] = useState<VPNPeer[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const [alertData, deviceData, userData, peerData] = await Promise.all([
+          listAlerts(),
+          listDevices(),
+          listUsers(),
+          listVPNPeers(),
+        ])
+        setAlerts(alertData)
+        setDevices(deviceData)
+        setUsers(userData)
+        setPeers(peerData)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Unable to load dashboard')
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  const metrics = useMemo(() => {
+    const criticalAlerts = alerts.filter(
+      (alert) => alert.severity === 'critical' && !alert.acknowledged,
+    )
+    const activeDevices = devices.filter(
+      (device) => device.status.toLowerCase() === 'online',
+    )
+    return [
+      {
+        label: 'Active devices',
+        value: activeDevices.length.toString(),
+        delta: `${devices.length} total`,
+      },
+      {
+        label: 'Critical alerts',
+        value: criticalAlerts.length.toString(),
+        delta: `${alerts.length} total`,
+      },
+      {
+        label: 'VPN peers',
+        value: peers.length.toString(),
+        delta: `${peers.filter((peer) => peer.is_active).length} active`,
+      },
+      {
+        label: 'Users',
+        value: users.length.toString(),
+        delta: `${users.filter((user) => user.is_active).length} active`,
+      },
+    ]
+  }, [alerts, devices, peers, users])
+
+  const activity = useMemo<ActivityItem[]>(() => {
+    const alertItems = alerts.slice(0, 2).map((alert) => ({
+      title: alert.acknowledged ? 'Alert acknowledged' : 'Alert opened',
+      meta: `${alert.type} · ${alert.severity}`,
+      time: toRelativeTime(alert.created_at),
+      tone: alert.severity,
+    }))
+    const deviceItems = devices.slice(0, 1).map((device) => ({
+      title: 'Device enrolled',
+      meta: device.hostname ?? device.mac_address,
+      time: toRelativeTime(device.created_at),
+      tone: 'info' as const,
+    }))
+    const userItems = users.slice(0, 1).map((user) => ({
+      title: 'User added',
+      meta: `${user.username} · ${user.role}`,
+      time: toRelativeTime(user.created_at),
+      tone: 'neutral' as const,
+    }))
+    const peerItems = peers.slice(0, 1).map((peer) => ({
+      title: 'VPN peer updated',
+      meta: peer.name,
+      time: toRelativeTime(peer.created_at),
+      tone: 'warning' as const,
+    }))
+    return [...alertItems, ...deviceItems, ...peerItems, ...userItems].slice(0, 4)
+  }, [alerts, devices, users, peers])
+
+  const priorityDevices = useMemo(
+    () =>
+      devices
+        .slice()
+        .sort((a, b) => (b.last_seen ?? '').localeCompare(a.last_seen ?? ''))
+        .slice(0, 3),
+    [devices],
+  )
+
+  return (
+    <>
     <header className="topbar">
       <div>
         <p className="eyebrow">Welcome back</p>
@@ -55,8 +154,9 @@ export const Dashboard = () => (
       </div>
     </header>
 
-    <main className="content">
-      <section className="hero">
+        <main className="content">
+          {error ? <p className="form-error">{error}</p> : null}
+          <section className="hero">
         <div>
           <p className="eyebrow">Risk summary</p>
           <h2>Premium-grade visibility across every gateway.</h2>
@@ -94,7 +194,7 @@ export const Dashboard = () => (
           <article key={metric.label} className="metric-card">
             <p className="eyebrow">{metric.label}</p>
             <div className="metric-value">
-              <span>{metric.value}</span>
+              <span>{loading ? '—' : metric.value}</span>
               <span className="metric-delta">{metric.delta}</span>
             </div>
           </article>
@@ -113,8 +213,26 @@ export const Dashboard = () => (
             </button>
           </div>
           <ul className="timeline">
+            {loading ? (
+              <li className="timeline-item neutral">
+                <div>
+                  <p className="timeline-title">Loading activity…</p>
+                  <p className="muted">Fetching live operations</p>
+                </div>
+                <span className="timeline-time">—</span>
+              </li>
+            ) : null}
+            {!loading && activity.length === 0 ? (
+              <li className="timeline-item neutral">
+                <div>
+                  <p className="timeline-title">No activity yet</p>
+                  <p className="muted">Recent updates will appear here.</p>
+                </div>
+                <span className="timeline-time">—</span>
+              </li>
+            ) : null}
             {activity.map((item) => (
-              <li key={item.title} className={`timeline-item ${item.tone}`}>
+              <li key={`${item.title}-${item.time}`} className={`timeline-item ${item.tone}`}>
                 <div>
                   <p className="timeline-title">{item.title}</p>
                   <p className="muted">{item.meta}</p>
@@ -131,20 +249,26 @@ export const Dashboard = () => (
               <p className="eyebrow">Device health</p>
               <h3>Priority gateways</h3>
             </div>
-            <span className="pill">3 monitored</span>
+            <span className="pill">{priorityDevices.length} monitored</span>
           </div>
           <div className="device-list">
-            {devices.map((device) => (
-              <div key={device.name} className="device-card">
-                <div>
-                  <p className="device-name">{device.name}</p>
-                  <p className="muted">{device.ip}</p>
+            {priorityDevices.map((device) => {
+              const displayStatus = toDeviceStatus(device.status)
+              return (
+                <div key={device.id} className="device-card">
+                  <div>
+                    <p className="device-name">{device.hostname || 'Unnamed device'}</p>
+                    <p className="muted">{device.ip}</p>
+                  </div>
+                  <span className={`status ${displayStatus.toLowerCase()}`}>
+                    {displayStatus}
+                  </span>
                 </div>
-                <span className={`status ${device.status.toLowerCase()}`}>
-                  {device.status}
-                </span>
-              </div>
-            ))}
+              )
+            })}
+            {!loading && priorityDevices.length === 0 ? (
+              <p className="empty-state">No devices enrolled yet.</p>
+            ) : null}
           </div>
           <div className="panel-footer">
             <button className="button button-primary" type="button">
@@ -158,4 +282,5 @@ export const Dashboard = () => (
       </section>
     </main>
   </>
-)
+  )
+}
