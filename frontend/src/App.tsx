@@ -5,6 +5,7 @@ import { Alerts } from './pages/Alerts'
 import { Dashboard } from './pages/Dashboard'
 import { Devices } from './pages/Devices'
 import { Login } from './pages/Login'
+import { Services } from './pages/Services'
 import { Users } from './pages/Users'
 import { VpnPeers } from './pages/VpnPeers'
 
@@ -25,6 +26,7 @@ const App = () => (
         <Route path="devices" element={<Devices />} />
         <Route path="alerts" element={<Alerts />} />
         <Route path="vpn-peers" element={<VpnPeers />} />
+        <Route path="services" element={<Services />} />
       </Route>
     </Routes>
   </BrowserRouter>

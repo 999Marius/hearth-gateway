@@ -56,6 +56,14 @@ export const AppLayout = () => {
           >
             VPN peers
           </NavLink>
+          <NavLink
+            to="/services"
+            className={({ isActive }) =>
+              `nav-link${isActive ? ' is-active' : ''}`
+            }
+          >
+            Services
+          </NavLink>
         </nav>
 
         <div className="sidebar-card">
