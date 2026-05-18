@@ -79,6 +79,18 @@ Base URL: `http://localhost:8000`
 4. Open Swagger:
    - `http://localhost:8000/docs`
 
+## Service control requirements (WireGuard + Pi-hole)
+
+The API can start/stop/restart services using systemd. Ensure the host has:
+
+- WireGuard unit: `wg-quick@wg0`
+- Pi-hole unit: `pihole-FTL`
+- `systemctl` available and the API process permitted to run it (sudo/polkit or
+  service account permissions)
+- Pi-hole FTL database reachable at `PIHOLE_FTL_DB` (default: `/pihole-data/pihole-FTL.db`)
+
+If these services are not installed, the endpoints will return `503`.
+
 ## Postman evidence (required screenshots)
 
 > Replace the placeholders below with your actual captures before submission.
